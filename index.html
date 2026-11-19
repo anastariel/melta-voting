@@ -1,0 +1,1661 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>MELTA Mozambique — 2026 General Assembly Digital Voting System</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <script>
+    tailwind.config = {
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'sans-serif'],
+          },
+          colors: {
+            melta: {
+              green: '#166534',
+              dark: '#0f3d21',
+              light: '#dcfce7',
+              red: '#b91c1c',
+              gold: '#b45309',
+            }
+          }
+        }
+      }
+    };
+  </script>
+  <style>
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #f1f5f9;
+    }
+    .vote-card {
+      transition: all 0.15s ease-in-out;
+    }
+    .vote-card:hover {
+      transform: translateY(-1px);
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col text-slate-800 antialiased">
+
+  <!-- TOP OFFICIAL HEADER -->
+  <header class="bg-melta-dark text-white shadow-md border-b-4 border-melta-red">
+    <div class="max-w-5xl mx-auto px-4 py-4 sm:py-5 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+      <div class="flex items-center gap-3.5">
+        <!-- Custom Inline SVG MELTA Emblem -->
+        <div class="w-12 h-12 rounded-xl bg-white flex items-center justify-center shrink-0 shadow-sm p-1">
+          <svg viewBox="0 0 64 64" class="w-full h-full" aria-hidden="true">
+            <path d="M10 38 A 22 22 0 0 1 54 38" fill="none" stroke="#b91c1c" stroke-width="3.5" stroke-linecap="round"/>
+            <circle cx="14" cy="21" r="4.5" fill="#b91c1c"/>
+            <text x="32" y="42" text-anchor="middle" font-family="Inter, sans-serif" font-weight="800" font-size="14" fill="#166534">MELTA</text>
+          </svg>
+        </div>
+        <div>
+          <span class="inline-block text-[11px] font-semibold uppercase tracking-wider text-emerald-300">
+            Mozambique English Language Teachers Association
+          </span>
+          <h1 class="text-lg sm:text-xl font-extrabold tracking-tight leading-tight">
+            MELTA General Assembly — Official Ballot System
+          </h1>
+          <p class="text-xs text-slate-300 mt-0.5">
+            21 November 2026 &bull; British Council, Av. Sociedade de Geografia, 269, 1st Floor, Hollard Building, Maputo
+          </p>
+        </div>
+      </div>
+
+      <!-- Mode Switcher Tabs -->
+      <nav class="flex bg-slate-900/60 p-1 rounded-xl border border-white/10 self-start sm:self-center" aria-label="System Mode">
+        <button
+          id="tab-voter"
+          type="button"
+          onclick="switchTab('voter')"
+          class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-white text-melta-dark shadow-sm transition"
+        >
+          Cast Ballot (Delegate View)
+        </button>
+        <button
+          id="tab-commission"
+          type="button"
+          onclick="switchTab('commission')"
+          class="px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold text-slate-200 hover:text-white transition"
+        >
+          Live Results &amp; Control Log
+        </button>
+      </nav>
+    </div>
+  </header>
+
+  <!-- MAIN CONTENT CONTAINER -->
+  <main class="flex-1 max-w-5xl w-full mx-auto px-4 py-6 sm:py-8">
+
+    <!-- ===================================================================== -->
+    <!-- VIEW 1: DELEGATE BALLOT PAPER (VOTER VIEW)                            -->
+    <!-- ===================================================================== -->
+    <section id="view-voter" class="space-y-6">
+
+      <!-- Quick Demo Helper Banner -->
+      <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="text-xs sm:text-sm text-emerald-950">
+          <strong class="font-bold text-melta-green">Demo Quick-Fill (Maputo City + 9 Provinces):</strong>
+          Click an unused Ballot Control Number below to auto-select that delegation and test voting:
+        </div>
+        <div class="flex flex-wrap gap-1.5" id="demo-code-chips">
+          <!-- Populated dynamically -->
+        </div>
+      </div>
+
+      <!-- Validation Alert Banner (Hidden by default) -->
+      <div id="validation-error-box" class="hidden bg-red-50 border-l-4 border-red-600 rounded-xl p-4 shadow-sm" role="alert">
+        <div class="flex items-start gap-3">
+          <svg class="w-5 h-5 text-red-600 shrink-0 mt-0.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+          <div>
+            <h3 id="validation-error-title" class="text-sm font-bold text-red-900">Action Required</h3>
+            <p id="validation-error-msg" class="text-xs sm:text-sm text-red-800 mt-0.5"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- BALLOT FORM -->
+      <form id="ballot-form" onsubmit="handleBallotSubmit(event)" class="space-y-6" novalidate>
+
+        <!-- STEP 1: DELEGATE VERIFICATION -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="bg-slate-50 border-b border-slate-200 px-5 py-3.5 flex items-center justify-between">
+            <div class="flex items-center gap-2.5">
+              <span class="w-6 h-6 rounded-full bg-melta-green text-white text-xs font-bold flex items-center justify-center">1</span>
+              <h2 class="text-sm sm:text-base font-bold text-slate-900">Delegate Accreditation &amp; Ballot Control Number</h2>
+            </div>
+            <span class="text-xs font-medium text-slate-500 hidden sm:inline">Secret &amp; Confidential Ballot</span>
+          </div>
+
+          <div class="p-5 sm:p-6 grid grid-cols-1 md:grid-cols-2 gap-5">
+            <!-- Province Dropdown -->
+            <div>
+              <label for="province-select" class="block text-sm font-semibold text-slate-700 mb-1.5">
+                Province / Delegation <span class="text-red-600">*</span>
+              </label>
+              <select
+                id="province-select"
+                onchange="handleProvinceChange()"
+                class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-sm font-medium text-slate-900 focus:border-melta-green focus:outline-none focus:ring-2 focus:ring-melta-green/20"
+                required
+              >
+                <option value="">-- Choose Delegation (or Auto-Detect via PIN) --</option>
+                <option value="Maputo City">Maputo City (British Council — 27 Delegates)</option>
+                <option value="Gaza">Gaza (Xai-Xai — 10 Delegates)</option>
+                <option value="Inhambane">Inhambane (Maxixe — 10 Delegates)</option>
+                <option value="Manica">Manica (Chimoio — 10 Delegates)</option>
+                <option value="Maputo Province">Maputo Province (15 Delegates)</option>
+                <option value="Nampula">Nampula (Nampula City — 10 Delegates)</option>
+                <option value="Niassa">Niassa (Lichinga — 10 Delegates)</option>
+                <option value="Sofala">Sofala (Beira — 10 Delegates)</option>
+                <option value="Tete">Tete (Tete City — 10 Delegates)</option>
+                <option value="Zambézia">Zambézia (Quelimane — 10 Delegates)</option>
+              </select>
+              <p id="venue-hint" class="mt-2 text-xs text-slate-500">
+                Select your province or delegation, or type your Control Number.
+              </p>
+            </div>
+
+            <!-- Ballot Control Number Input -->
+            <div>
+              <label for="control-number" class="block text-sm font-semibold text-slate-700 mb-1.5">
+                Ballot Control Number (PIN) <span class="text-red-600">*</span>
+              </label>
+              <input
+                type="text"
+                id="control-number"
+                placeholder="e.g., MPC-01, SOF-01, ZAM-01"
+                autocomplete="off"
+                oninput="handleControlNumberInput(this)"
+                class="w-full rounded-xl border border-slate-300 bg-white px-3.5 py-3 text-sm font-mono font-bold uppercase tracking-wider text-slate-900 placeholder:font-sans placeholder:font-normal placeholder:normal-case placeholder:tracking-normal focus:border-melta-green focus:outline-none focus:ring-2 focus:ring-melta-green/20"
+                required
+              />
+              <p id="range-hint" class="mt-2 text-xs text-slate-500">
+                Issued anonymously by the Electoral Commission / Provincial President.
+              </p>
+            </div>
+          </div>
+
+          <div class="bg-amber-50/70 border-t border-amber-200/80 px-5 py-2.5 text-xs text-amber-900 flex items-center gap-2">
+            <svg class="w-4 h-4 text-amber-600 shrink-0" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+            </svg>
+            <span>
+              <strong>Anonymity Guarantee:</strong> Do not enter your name or personal details. Your Control Number only prevents double-voting and is never linked to your vote choice.
+            </span>
+          </div>
+        </div>
+
+        <!-- STEP 2: PROVINCIAL REPRESENTATIVES BALLOT PAPER (DYNAMIC) -->
+        <div id="provincial-ballot-card" class="hidden bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="bg-melta-green text-white px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <div class="flex items-center gap-2.5">
+              <span class="w-6 h-6 rounded-full bg-white text-melta-green text-xs font-extrabold flex items-center justify-center">2</span>
+              <h2 id="provincial-ballot-title" class="text-sm sm:text-base font-bold">PROVINCIAL REPRESENTATIVES</h2>
+            </div>
+            <span id="provincial-venue-badge" class="text-xs text-emerald-100 font-medium"></span>
+          </div>
+
+          <div class="p-5 sm:p-6 space-y-5">
+            <!-- Candidate Slate Box -->
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+              <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-3">
+                <span class="text-xs font-bold uppercase tracking-wider text-slate-500">
+                  Candidate Team for Provincial Representation (Single Unopposed Slate)
+                </span>
+                <span id="provincial-electoral-officer" class="text-xs text-slate-500"></span>
+              </div>
+              <div id="provincial-candidates-list" class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <!-- Populated dynamically by JS -->
+              </div>
+            </div>
+
+            <!-- Cast Your Vote (Provincial) -->
+            <div>
+              <p class="text-sm font-bold text-slate-800 mb-3">Cast Your Vote — Provincial Candidate Team:</p>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" role="radiogroup" aria-label="Provincial Candidate Team Vote">
+                <label class="vote-card cursor-pointer relative flex items-center gap-3 p-4 rounded-xl border-2 border-slate-200 bg-white hover:border-emerald-500 has-[:checked]:border-melta-green has-[:checked]:bg-emerald-50/70">
+                  <input type="radio" name="provincial_vote" value="favour" class="w-4 h-4 text-melta-green focus:ring-melta-green" />
+                  <div>
+                    <span class="block text-sm font-bold text-slate-900">Vote in favour of the candidate team</span>
+                    <span class="block text-xs text-slate-500">Approve the provincial slate</span>
+                  </div>
+                </label>
+
+                <label class="vote-card cursor-pointer relative flex items-center gap-3 p-4 rounded-xl border-2 border-slate-200 bg-white hover:border-red-400 has-[:checked]:border-red-600 has-[:checked]:bg-red-50/60">
+                  <input type="radio" name="provincial_vote" value="against" class="w-4 h-4 text-red-600 focus:ring-red-600" />
+                  <div>
+                    <span class="block text-sm font-bold text-slate-900">Vote against the candidate team</span>
+                    <span class="block text-xs text-slate-500">Reject the provincial slate</span>
+                  </div>
+                </label>
+
+                <label class="vote-card cursor-pointer relative flex items-center gap-3 p-4 rounded-xl border-2 border-slate-200 bg-white hover:border-slate-400 has-[:checked]:border-slate-700 has-[:checked]:bg-slate-100">
+                  <input type="radio" name="provincial_vote" value="blank" class="w-4 h-4 text-slate-700 focus:ring-slate-700" />
+                  <div>
+                    <span class="block text-sm font-bold text-slate-900">Vote in Blank</span>
+                    <span class="block text-xs text-slate-500">Abstain / Blank ballot</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- STEP 3: NATIONAL GOVERNING BODIES BALLOT PAPER (CENTRAL LEVEL) -->
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+          <div class="bg-slate-900 text-white px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+            <div class="flex items-center gap-2.5">
+              <span class="w-6 h-6 rounded-full bg-white text-slate-900 text-xs font-extrabold flex items-center justify-center">3</span>
+              <h2 class="text-sm sm:text-base font-bold">NATIONAL GOVERNING BODIES — CENTRAL LEVEL</h2>
+            </div>
+            <span class="text-xs text-slate-300 font-medium">All Provinces Vote on National Slate</span>
+          </div>
+
+          <div class="p-5 sm:p-6 space-y-5">
+            <!-- National Candidate Team Box -->
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+              <span class="block text-xs font-bold uppercase tracking-wider text-slate-500 mb-3">
+                Candidate Team for the National Governing Bodies (9 Members — Unopposed Slate)
+              </span>
+              <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 text-sm">
+                <div class="flex items-start gap-2.5 bg-white px-3 py-2.5 rounded-lg border border-slate-200/80">
+                  <span class="w-5 h-5 rounded-full bg-emerald-100 text-melta-green text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">1</span>
+                  <div>
+                    <span class="block font-semibold text-slate-900 leading-tight">Auzinda Domingos</span>
+                    <span class="block text-[11px] text-slate-500">President of the General Assembly</span>
+                  </div>
+                </div>
+                <div class="flex items-start gap-2.5 bg-white px-3 py-2.5 rounded-lg border border-slate-200/80">
+                  <span class="w-5 h-5 rounded-full bg-emerald-100 text-melta-green text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">2</span>
+                  <div>
+                    <span class="block font-semibold text-slate-900 leading-tight">Horacio Sitoe</span>
+                    <span class="block text-[11px] text-slate-500">Vice-President of the General Assembly</span>
+                  </div>
+                </div>
+                <div class="flex items-start gap-2.5 bg-white px-3 py-2.5 rounded-lg border border-slate-200/80">
+                  <span class="w-5 h-5 rounded-full bg-emerald-100 text-melta-green text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">3</span>
+                  <div>
+                    <span class="block font-semibold text-slate-900 leading-tight">Candida Antonio</span>
+                    <span class="block text-[11px] text-slate-500">Secretary</span>
+                  </div>
+                </div>
+                <div class="flex items-start gap-2.5 bg-white px-3 py-2.5 rounded-lg border border-slate-200/80">
+                  <span class="w-5 h-5 rounded-full bg-emerald-100 text-melta-green text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">4</span>
+                  <div>
+                    <span class="block font-semibold text-slate-900 leading-tight">Jose Dinis</span>
+                    <span class="block text-[11px] text-slate-500">MELTA President</span>
+                  </div>
+                </div>
+                <div class="flex items-start gap-2.5 bg-white px-3 py-2.5 rounded-lg border border-slate-200/80">
+                  <span class="w-5 h-5 rounded-full bg-emerald-100 text-melta-green text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">5</span>
+                  <div>
+                    <span class="block font-semibold text-slate-900 leading-tight">Amade Ali Baraza</span>
+                    <span class="block text-[11px] text-slate-500">MELTA Vice-President</span>
+                  </div>
+                </div>
+                <div class="flex items-start gap-2.5 bg-white px-3 py-2.5 rounded-lg border border-slate-200/80">
+                  <span class="w-5 h-5 rounded-full bg-emerald-100 text-melta-green text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">6</span>
+                  <div>
+                    <span class="block font-semibold text-slate-900 leading-tight">Valquiria Ferreira</span>
+                    <span class="block text-[11px] text-slate-500">General Secretary</span>
+                  </div>
+                </div>
+                <div class="flex items-start gap-2.5 bg-white px-3 py-2.5 rounded-lg border border-slate-200/80">
+                  <span class="w-5 h-5 rounded-full bg-emerald-100 text-melta-green text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">7</span>
+                  <div>
+                    <span class="block font-semibold text-slate-900 leading-tight">Eduardo Nassone</span>
+                    <span class="block text-[11px] text-slate-500">President of the Physical Council</span>
+                  </div>
+                </div>
+                <div class="flex items-start gap-2.5 bg-white px-3 py-2.5 rounded-lg border border-slate-200/80">
+                  <span class="w-5 h-5 rounded-full bg-emerald-100 text-melta-green text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">8</span>
+                  <div>
+                    <span class="block font-semibold text-slate-900 leading-tight">Justino Matola</span>
+                    <span class="block text-[11px] text-slate-500">Vice-President of the Physical Council</span>
+                  </div>
+                </div>
+                <div class="flex items-start gap-2.5 bg-white px-3 py-2.5 rounded-lg border border-slate-200/80">
+                  <span class="w-5 h-5 rounded-full bg-emerald-100 text-melta-green text-xs font-bold flex items-center justify-center shrink-0 mt-0.5">9</span>
+                  <div>
+                    <span class="block font-semibold text-slate-900 leading-tight">Praxedes Padina</span>
+                    <span class="block text-[11px] text-slate-500">Rapporteur</span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <!-- Cast Your Vote (National) -->
+            <div>
+              <p class="text-sm font-bold text-slate-800 mb-3">Cast Your Vote — National Candidate Team:</p>
+              <div class="grid grid-cols-1 sm:grid-cols-3 gap-3" role="radiogroup" aria-label="National Candidate Team Vote">
+                <label class="vote-card cursor-pointer relative flex items-center gap-3 p-4 rounded-xl border-2 border-slate-200 bg-white hover:border-emerald-500 has-[:checked]:border-melta-green has-[:checked]:bg-emerald-50/70">
+                  <input type="radio" name="national_vote" value="favour" class="w-4 h-4 text-melta-green focus:ring-melta-green" />
+                  <div>
+                    <span class="block text-sm font-bold text-slate-900">Vote in favour of the candidate team</span>
+                    <span class="block text-xs text-slate-500">Approve the national slate</span>
+                  </div>
+                </label>
+
+                <label class="vote-card cursor-pointer relative flex items-center gap-3 p-4 rounded-xl border-2 border-slate-200 bg-white hover:border-red-400 has-[:checked]:border-red-600 has-[:checked]:bg-red-50/60">
+                  <input type="radio" name="national_vote" value="against" class="w-4 h-4 text-red-600 focus:ring-red-600" />
+                  <div>
+                    <span class="block text-sm font-bold text-slate-900">Vote against the candidate team</span>
+                    <span class="block text-xs text-slate-500">Reject the national slate</span>
+                  </div>
+                </label>
+
+                <label class="vote-card cursor-pointer relative flex items-center gap-3 p-4 rounded-xl border-2 border-slate-200 bg-white hover:border-slate-400 has-[:checked]:border-slate-700 has-[:checked]:bg-slate-100">
+                  <input type="radio" name="national_vote" value="blank" class="w-4 h-4 text-slate-700 focus:ring-slate-700" />
+                  <div>
+                    <span class="block text-sm font-bold text-slate-900">Vote in Blank</span>
+                    <span class="block text-xs text-slate-500">Abstain / Blank ballot</span>
+                  </div>
+                </label>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- SUBMIT FOOTER -->
+        <div class="flex flex-col sm:flex-row items-center justify-between gap-4 bg-white p-5 rounded-2xl shadow-sm border border-slate-200">
+          <p class="text-xs text-slate-500 text-center sm:text-left">
+            By submitting, you confirm you are an accredited MELTA delegate casting your single secret ballot.
+          </p>
+          <button
+            type="submit"
+            class="w-full sm:w-auto px-7 py-3.5 rounded-xl bg-melta-green hover:bg-melta-dark text-white font-bold text-sm shadow-md transition flex items-center justify-center gap-2"
+          >
+            <span>Submit Official Ballot</span>
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+            </svg>
+          </button>
+        </div>
+      </form>
+
+      <!-- SECRET BALLOT RECEIPT SCREEN (Shown after successful vote) -->
+      <div id="receipt-screen" class="hidden bg-white rounded-2xl shadow-md border border-emerald-200 p-6 sm:p-10 text-center space-y-5">
+        <div class="w-16 h-16 rounded-full bg-emerald-100 text-melta-green mx-auto flex items-center justify-center">
+          <svg class="w-9 h-9" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
+          </svg>
+        </div>
+        <div class="space-y-1.5">
+          <span class="inline-block px-3 py-1 rounded-full bg-emerald-100 text-melta-green text-xs font-bold uppercase tracking-wider">
+            Secret Ballot Recorded
+          </span>
+          <h2 class="text-2xl font-extrabold text-slate-900">Your Vote Has Been Placed in the Digital Ballot Box</h2>
+          <p class="text-sm text-slate-600 max-w-lg mx-auto">
+            Control Number <strong id="receipt-control-number" class="font-mono text-slate-900"></strong> for
+            <strong id="receipt-province" class="text-slate-900"></strong> has been verified and sealed. To preserve ballot secrecy, your specific choices are not displayed on this receipt.
+          </p>
+        </div>
+
+        <div class="max-w-md mx-auto bg-slate-50 border border-slate-200 rounded-xl p-4 text-xs text-slate-600 space-y-1">
+          <p><strong>Confirmation Code:</strong> <span id="receipt-conf-code" class="font-mono font-bold text-slate-900"></span></p>
+          <p><strong>Timestamp:</strong> <span id="receipt-timestamp"></span></p>
+          <p><strong>Ballot Status:</strong> Control Number locked against duplicate voting</p>
+          <p class="text-emerald-700 font-medium pt-1">MELTA Electoral Commission &bull; 21 November 2026</p>
+        </div>
+
+        <div class="flex flex-col sm:flex-row items-center justify-center gap-3 pt-2">
+          <button
+            type="button"
+            onclick="resetForNextDelegate()"
+            class="w-full sm:w-auto px-5 py-3 rounded-xl bg-melta-green hover:bg-melta-dark text-white text-sm font-bold transition shadow-sm"
+          >
+            Cast Another Vote (Next Delegate)
+          </button>
+          <button
+            type="button"
+            onclick="switchTab('commission')"
+            class="w-full sm:w-auto px-5 py-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 border border-amber-300 text-sm font-bold transition"
+          >
+            View Live Results &amp; Tally
+          </button>
+        </div>
+      </div>
+
+    </section>
+
+    <!-- ===================================================================== -->
+    <!-- VIEW 2: LIVE RESULTS & CONTROL LOG (ELECTORAL COMMISSION VIEW)        -->
+    <!-- ===================================================================== -->
+    <section id="view-commission" class="hidden space-y-6">
+
+      <!-- COMMISSION DEMO CONTROLS BAR -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h2 class="text-base font-bold text-slate-900">Electoral Commission Live Tabulation</h2>
+          <p class="text-xs text-slate-500 mt-0.5">
+            Real-time aggregation across Maputo City &amp; 9 Provincial Hubs (122 accredited delegates; Cabo Delgado not provided). NEC: Catarina Arlindo, Helder Bayate &amp; Nalia Francisco &bull; Tech Assistance: Anastancio Ariel Macuacua (Head), Teofilo Dorio &amp; Nelson Tamela.
+          </p>
+        </div>
+        <div class="flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            onclick="loadSampleAssemblyVotes()"
+            class="px-3.5 py-2 rounded-xl bg-melta-light hover:bg-emerald-200/70 text-melta-green border border-emerald-300 text-xs font-bold transition"
+          >
+            Load Sample Assembly Votes
+          </button>
+          <button
+            type="button"
+            onclick="promptResetAllVotes()"
+            class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold transition"
+          >
+            Reset Demo Data
+          </button>
+          <button
+            type="button"
+            onclick="downloadCSVMinutes()"
+            class="px-3.5 py-2 rounded-xl bg-melta-gold hover:bg-amber-700 text-white text-xs font-bold shadow-sm transition flex items-center gap-1.5"
+          >
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            <span>Export Official Minutes CSV</span>
+          </button>
+        </div>
+      </div>
+
+      <!-- SHARED GOOGLE SHEET SYNC & APPS SCRIPT SETUP CARD -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="bg-slate-50 border-b border-slate-200 px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <h3 class="text-sm sm:text-base font-bold text-slate-900">Shared Google Sheet Live Sync (Multi-Province Collection)</h3>
+            <p class="text-xs text-slate-500">Connect a Google Apps Script Web App URL so votes submitted from any province stream into one shared Google Sheet.</p>
+          </div>
+          <span id="gsheet-status-badge" class="self-start sm:self-center px-2.5 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-700">
+            Local / Offline Mode
+          </span>
+        </div>
+
+        <div class="p-5 space-y-4">
+          <div class="flex flex-col sm:flex-row gap-2.5">
+            <input
+              type="url"
+              id="gsheet-webhook-url"
+              placeholder="https://script.google.com/macros/s/YOUR_DEPLOYMENT_ID/exec"
+              oninput="handleGoogleSheetUrlChange(this.value)"
+              class="flex-1 rounded-xl border border-slate-300 bg-white px-3.5 py-2.5 text-xs sm:text-sm font-mono text-slate-900 focus:border-melta-green focus:outline-none focus:ring-2 focus:ring-melta-green/20"
+            />
+            <button
+              type="button"
+              onclick="testGoogleSheetPing()"
+              class="px-4 py-2.5 rounded-xl bg-melta-green hover:bg-melta-dark text-white text-xs sm:text-sm font-bold transition shrink-0"
+            >
+              Send Test Ping
+            </button>
+            <button
+              type="button"
+              onclick="toggleAppsScriptBox()"
+              class="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-800 border border-slate-300 text-xs sm:text-sm font-bold transition shrink-0"
+            >
+              Apps Script Code
+            </button>
+          </div>
+
+          <p id="gsheet-feedback-msg" class="text-xs text-slate-500">
+            Tip: Paste your deployed Google Apps Script Web App URL here once—it saves automatically in this browser.
+          </p>
+
+          <!-- Collapsible Apps Script Helper -->
+          <div id="apps-script-box" class="hidden bg-slate-900 text-slate-100 rounded-xl p-4 space-y-3 border border-slate-700">
+            <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+              <div class="text-xs text-slate-300">
+                <strong class="text-emerald-400">1.</strong> Create a Google Sheet with tab named <code class="text-white bg-slate-800 px-1.5 py-0.5 rounded">Ballots</code>
+                &bull; <strong class="text-emerald-400">2.</strong> Paste into <em>Extensions &rarr; Apps Script</em> &amp; deploy as Web App (<em>Anyone</em>).
+              </div>
+              <button
+                type="button"
+                onclick="copyAppsScriptCode()"
+                id="copy-script-btn"
+                class="px-3 py-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold transition shrink-0 self-start sm:self-auto"
+              >
+                Copy Apps Script
+              </button>
+            </div>
+            <pre id="apps-script-code" class="text-[11px] font-mono text-emerald-200 bg-slate-950 p-3 rounded-lg overflow-x-auto leading-relaxed">function doPost(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('Ballots') || ss.getSheets()[0];
+    var data = JSON.parse(e.postData.contents);
+
+    if (sheet.getLastRow() === 0) {
+      sheet.appendRow([
+        'Server Timestamp',
+        'Event Type',
+        'Confirmation Code',
+        'Control Number',
+        'Province / Delegation',
+        'Provincial Vote',
+        'National Vote',
+        'Client Timestamp'
+      ]);
+    }
+
+    sheet.appendRow([
+      new Date(),
+      data.event || 'MELTA_2026_BALLOT',
+      data.confirmationCode || '',
+      data.controlNumber || '',
+      data.province || '',
+      data.provincialVote || '',
+      data.nationalVote || '',
+      data.timestamp || ''
+    ]);
+
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: 'ok' }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: 'error', message: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}</pre>
+          </div>
+        </div>
+      </div>
+
+      <!-- INLINE RESET CONFIRMATION BAR -->
+      <div id="reset-confirm-bar" class="hidden bg-red-50 border border-red-300 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+        <div class="text-xs sm:text-sm text-red-900">
+          <strong>Confirm Reset:</strong> Clear all recorded ballots and unlock all 122 Control Numbers back to 0?
+        </div>
+        <div class="flex items-center gap-2 shrink-0">
+          <button
+            type="button"
+            onclick="confirmResetAllVotes()"
+            class="px-3.5 py-1.5 rounded-lg bg-red-600 hover:bg-red-700 text-white text-xs font-bold transition"
+          >
+            Yes, Clear All Ballots
+          </button>
+          <button
+            type="button"
+            onclick="cancelResetAllVotes()"
+            class="px-3.5 py-1.5 rounded-lg bg-white hover:bg-slate-100 text-slate-700 border border-slate-300 text-xs font-semibold transition"
+          >
+            Cancel
+          </button>
+        </div>
+      </div>
+
+      <!-- NATIONAL GOVERNING BODIES SCOREBOARD -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="bg-slate-900 text-white px-5 py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+          <div>
+            <span class="text-[11px] font-bold uppercase tracking-wider text-emerald-400">Central Level Election</span>
+            <h3 class="text-base sm:text-lg font-extrabold">National Governing Bodies — Candidate Team Result</h3>
+          </div>
+          <span id="national-status-badge" class="self-start sm:self-center px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/40">
+            APPROVED / ELECTED
+          </span>
+        </div>
+
+        <div class="p-5 sm:p-6 space-y-5">
+          <!-- KPI Metric Cards -->
+          <div class="grid grid-cols-2 sm:grid-cols-4 gap-3 sm:gap-4">
+            <div class="bg-slate-50 border border-slate-200 rounded-xl p-4">
+              <span class="text-xs font-semibold text-slate-500">Total Ballots Cast</span>
+              <div class="mt-1 flex items-baseline gap-2">
+                <span id="nat-total" class="text-2xl sm:text-3xl font-extrabold text-slate-900">0</span>
+                <span class="text-xs font-medium text-slate-500">/ 122 accredited</span>
+              </div>
+            </div>
+
+            <div class="bg-emerald-50/80 border border-emerald-200 rounded-xl p-4">
+              <span class="text-xs font-bold text-melta-green">Vote in Favour</span>
+              <div class="mt-1 flex items-baseline gap-2">
+                <span id="nat-favour-count" class="text-2xl sm:text-3xl font-extrabold text-melta-green">0</span>
+                <span id="nat-favour-pct" class="text-xs font-bold text-emerald-700">(0%)</span>
+              </div>
+            </div>
+
+            <div class="bg-red-50/80 border border-red-200 rounded-xl p-4">
+              <span class="text-xs font-bold text-red-700">Vote Against</span>
+              <div class="mt-1 flex items-baseline gap-2">
+                <span id="nat-against-count" class="text-2xl sm:text-3xl font-extrabold text-red-700">0</span>
+                <span id="nat-against-pct" class="text-xs font-bold text-red-600">(0%)</span>
+              </div>
+            </div>
+
+            <div class="bg-slate-100 border border-slate-200 rounded-xl p-4">
+              <span class="text-xs font-bold text-slate-600">Vote in Blank</span>
+              <div class="mt-1 flex items-baseline gap-2">
+                <span id="nat-blank-count" class="text-2xl sm:text-3xl font-extrabold text-slate-700">0</span>
+                <span id="nat-blank-pct" class="text-xs font-bold text-slate-500">(0%)</span>
+              </div>
+            </div>
+          </div>
+
+          <!-- Visual Progress Bar -->
+          <div class="space-y-1.5">
+            <div class="flex justify-between text-xs font-semibold text-slate-600">
+              <span>National Ballot Distribution</span>
+              <span id="nat-turnout-label">Turnout: 0%</span>
+            </div>
+            <div class="w-full h-4 bg-slate-100 rounded-full overflow-hidden flex border border-slate-200">
+              <div id="nat-bar-favour" class="bg-melta-green h-full transition-all duration-300" style="width: 0%"></div>
+              <div id="nat-bar-against" class="bg-red-600 h-full transition-all duration-300" style="width: 0%"></div>
+              <div id="nat-bar-blank" class="bg-slate-400 h-full transition-all duration-300" style="width: 0%"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PROVINCIAL RESULTS GRID -->
+      <div class="space-y-3">
+        <div class="flex flex-col sm:flex-row sm:items-center justify-between gap-1 px-1">
+          <h3 class="text-base font-bold text-slate-900">Delegations &amp; Provincial Slates Breakdown</h3>
+          <p class="text-xs text-slate-500">Maputo City (National Slate) + 9 Provincial Slates with venues, Electoral Teams, and live tallies</p>
+        </div>
+        <div id="provincial-results-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+          <!-- Populated dynamically by JS -->
+        </div>
+      </div>
+
+      <!-- ANONYMOUS CONTROL NUMBER AUDIT LOG -->
+      <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="bg-slate-50 border-b border-slate-200 px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1">
+          <div>
+            <h3 class="text-sm sm:text-base font-bold text-slate-900">Ballot Control Number Audit Log (Duplicate Prevention)</h3>
+            <p class="text-xs text-slate-500">Tracks which Control Numbers have voted without revealing how each delegate voted.</p>
+          </div>
+          <span id="audit-count-badge" class="self-start sm:self-center text-xs font-bold bg-slate-200 text-slate-800 px-2.5 py-1 rounded-lg">
+            0 / 122 Control Numbers Used
+          </span>
+        </div>
+
+        <div class="overflow-x-auto">
+          <table class="w-full text-left border-collapse text-sm">
+            <thead>
+              <tr class="bg-slate-50/70 border-b border-slate-200 text-xs uppercase tracking-wider text-slate-500">
+                <th class="py-3 px-4 font-bold">#</th>
+                <th class="py-3 px-4 font-bold">Control Number</th>
+                <th class="py-3 px-4 font-bold">Province / Hub</th>
+                <th class="py-3 px-4 font-bold">Timestamp Recorded</th>
+                <th class="py-3 px-4 font-bold text-right">Ballot Secrecy</th>
+              </tr>
+            </thead>
+            <tbody id="audit-log-tbody" class="divide-y divide-slate-100">
+              <!-- Populated dynamically by JS -->
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+    </section>
+  </main>
+
+  <!-- FOOTER -->
+  <footer class="bg-white border-t border-slate-200 py-4 px-4 mt-8">
+    <div class="max-w-5xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
+      <span>MELTA Electoral Commission &bull; Mozambique English Language Teachers Association</span>
+      <span>21 November 2026 &bull; Hybrid Assembly System</span>
+    </div>
+  </footer>
+
+  <!-- JAVASCRIPT LOGIC -->
+  <script>
+    const STORAGE_KEY = 'melta_2026_assembly_ballots_v5';
+    const GSHEET_URL_STORAGE_KEY = 'melta_2026_gsheet_webhook_url_v1';
+
+    // OPTIONAL DEFAULT: Paste your deployed Google Apps Script Web App URL between the quotes below
+    // to pre-configure it for everyone who opens the hosted page, or paste it in the Commission tab.
+    const GOOGLE_SHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzGATRe7ZapzSOHhBKqctDker5rb-pa7ptNqyg5P50WxzWBcIUxdqDVX4iQ6y6CEaQ59Q/exec';
+
+    // 1. MASTER DELEGATION & PROVINCIAL CONFIGURATION (Maputo City [27] + 9 Provinces [95] = 122 Accredited Delegates)
+    const PROVINCES_DATA = {
+      'Maputo City': {
+        prefix: 'MPC',
+        maxDelegates: 27,
+        rangeText: 'MPC-01 to MPC-27',
+        venue: 'British Council, Av. Sociedade de Geografia, 269, 1st Floor, Hollard Building, Maputo',
+        hasProvincialSlate: true,
+        electoralTeam: {
+          president: 'Catarina Arlindo (NEC Pres.)',
+          presidentPhone: '849500167',
+          vocal: 'Helder Bayate (1st) & Nalia Francisco (2nd NEC Vocals)',
+          vocalPhone: '824929370 / 840240836'
+        },
+        technicalAssistance: [
+          { role: 'Head of Technical Assistance', name: 'Anastancio Ariel Macuacua', contact: '842180125' },
+          { role: 'Technical Assistance', name: 'Teofilo Dorio', contact: '843913559' },
+          { role: 'Technical Assistance', name: 'Nelson Tamela', contact: '874844550' }
+        ],
+        candidates: [
+          { role: 'MELTA Provincial Representative', name: 'Leila Sitoe' },
+          { role: 'Assistant', name: 'Sostinho Gabriel Machavate' },
+          { role: 'Secretary', name: 'Gildo Luis Cumbane' }
+        ]
+      },
+      'Gaza': {
+        prefix: 'GAZ',
+        maxDelegates: 10,
+        rangeText: 'GAZ-01 to GAZ-10',
+        venue: 'Joaquim Chissano Secondary School, Xai-Xai',
+        hasProvincialSlate: true,
+        electoralTeam: {
+          president: 'Egnencia Jaime Nguenhene',
+          presidentPhone: '840219105',
+          vocal: 'Fenias Niquilario Joao',
+          vocalPhone: '860572747'
+        },
+        candidates: [
+          { role: 'MELTA Provincial Representative', name: 'João Francisco Tamele' },
+          { role: 'Assistant', name: 'Mendel Domigos Saveca' },
+          { role: 'Secretary', name: 'Marcela Antonio Machaieie' }
+        ]
+      },
+      'Inhambane': {
+        prefix: 'INH',
+        maxDelegates: 10,
+        rangeText: 'INH-01 to INH-10',
+        venue: '29 de Setembro Secondary School, Maxixe',
+        hasProvincialSlate: true,
+        electoralTeam: {
+          president: 'Nelson Kemase',
+          presidentPhone: '842495370',
+          vocal: 'Sandra Abel Quipisso',
+          vocalPhone: '848282655'
+        },
+        candidates: [
+          { role: 'MELTA Provincial Representative', name: 'Nelson Armando Comeio Tamele' },
+          { role: 'Assistant', name: 'Joao Pedro Gujamo' },
+          { role: 'Secretary', name: 'Neldo Bernardo Zaqueu' }
+        ]
+      },
+      'Manica': {
+        prefix: 'MAN',
+        maxDelegates: 10,
+        rangeText: 'MAN-01 to MAN-10',
+        venue: 'Samora Machel Secondary School, Chimoio',
+        hasProvincialSlate: true,
+        electoralTeam: {
+          president: 'Loice Mahada',
+          presidentPhone: '847544688',
+          vocal: 'Fernando Cândido',
+          vocalPhone: '845489843'
+        },
+        candidates: [
+          { role: 'MELTA Provincial Representative', name: 'Batson Chipupuri' },
+          { role: 'Assistant', name: 'Norest Tsoka' },
+          { role: 'Secretary', name: 'Jorge Mutiro' }
+        ]
+      },
+      'Maputo Province': {
+        prefix: 'MPR',
+        maxDelegates: 15,
+        rangeText: 'MPR-01 to MPR-15',
+        venue: 'British Council, Av. Sociedade de Geografia, 269, 1st Floor, Hollard Building, Maputo',
+        hasProvincialSlate: true,
+        electoralTeam: {
+          president: 'Pedro Antonio Navaia',
+          presidentPhone: '845778094',
+          vocal: 'Agostinho A. Macande',
+          vocalPhone: '847810198'
+        },
+        candidates: [
+          { role: 'MELTA Provincial Representative', name: 'Daniel Poio' },
+          { role: 'Assistant', name: 'Nelson Hunguana' },
+          { role: 'Secretary', name: 'Nelson Andre Mulhule' }
+        ]
+      },
+      'Nampula': {
+        prefix: 'NAM',
+        maxDelegates: 10,
+        rangeText: 'NAM-01 to NAM-10',
+        venue: 'Nampula Secondary School, Nampula City',
+        hasProvincialSlate: true,
+        electoralTeam: {
+          president: 'João Sabino',
+          presidentPhone: '840140437',
+          vocal: 'Belarmina Hilário Vinhereque',
+          vocalPhone: '843820146'
+        },
+        candidates: [
+          { role: 'MELTA Provincial Representative', name: 'Ofélia Ricardina Cornélio A. Assane' },
+          { role: 'Assistant', name: 'Assumane Cassamo Abdulino' },
+          { role: 'Secretary', name: 'Hélder Pulveira' }
+        ]
+      },
+      'Niassa': {
+        prefix: 'NIA',
+        maxDelegates: 10,
+        rangeText: 'NIA-01 to NIA-10',
+        venue: 'Paulo Samuel Kamgomba Secondary School, Lichinga',
+        hasProvincialSlate: true,
+        electoralTeam: {
+          president: 'Aly Amado',
+          presidentPhone: '865785739',
+          vocal: 'Jran Ngwira',
+          vocalPhone: '861792793'
+        },
+        candidates: [
+          { role: 'MELTA Provincial Representative', name: 'Franklim Kamata' },
+          { role: 'Assistant', name: 'Jane Mangwe' },
+          { role: 'Secretary', name: 'Tomas Camanga' }
+        ]
+      },
+      'Sofala': {
+        prefix: 'SOF',
+        maxDelegates: 10,
+        rangeText: 'SOF-01 to SOF-10',
+        venue: 'Samora Machel Secondary School, Beira',
+        hasProvincialSlate: true,
+        electoralTeam: {
+          president: 'Ruth Samba',
+          presidentPhone: '878905119',
+          vocal: 'Domingos Tomas',
+          vocalPhone: '875988100'
+        },
+        candidates: [
+          { role: 'MELTA Provincial Representative', name: 'Geremias Sisinio Abuque' },
+          { role: 'Assistant', name: 'Eusébio Francisco Albino' },
+          { role: 'Secretary', name: 'Praise Chitondo' }
+        ]
+      },
+      'Tete': {
+        prefix: 'TET',
+        maxDelegates: 10,
+        rangeText: 'TET-01 to TET-10',
+        venue: 'Francisco Manyanga Secondary School, Tete City',
+        hasProvincialSlate: true,
+        electoralTeam: {
+          president: 'Baker Daniel Windiya',
+          presidentPhone: '875686068',
+          vocal: 'Catarina Xavier D. Janeiro',
+          vocalPhone: '871071855'
+        },
+        candidates: [
+          { role: 'MELTA Provincial Representative', name: 'Vasco Francisco Dembua' },
+          { role: 'Assistant', name: 'Evance Kadzuwa Marques' },
+          { role: 'Secretary', name: 'Munjila Beauty Rebo' }
+        ]
+      },
+      'Zambézia': {
+        prefix: 'ZAM',
+        maxDelegates: 10,
+        rangeText: 'ZAM-01 to ZAM-10',
+        venue: '25 de Setembro Secondary School, Quelimane',
+        hasProvincialSlate: true,
+        electoralTeam: {
+          president: 'Fidélio Francisco Assupainho',
+          presidentPhone: '86 005 2975',
+          vocal: 'Gildo Munliua',
+          vocalPhone: '868820726'
+        },
+        candidates: [
+          { role: 'MELTA Provincial Representative', name: 'Germano Evaristo Jone' },
+          { role: 'Assistant', name: 'Hortência Annie Venâncio' },
+          { role: 'Secretary', name: 'Paulo Sinate' }
+        ]
+      }
+    };
+
+    const PREFIX_TO_PROVINCE = Object.fromEntries(
+      Object.entries(PROVINCES_DATA).map(([prov, info]) => [info.prefix, prov])
+    );
+
+    const DEMO_QUICK_CODES = [
+      { code: 'MPC-01', province: 'Maputo City' },
+      { code: 'GAZ-01', province: 'Gaza' },
+      { code: 'INH-01', province: 'Inhambane' },
+      { code: 'MAN-01', province: 'Manica' },
+      { code: 'MPR-01', province: 'Maputo Province' },
+      { code: 'NAM-01', province: 'Nampula' },
+      { code: 'NIA-01', province: 'Niassa' },
+      { code: 'SOF-01', province: 'Sofala' },
+      { code: 'TET-01', province: 'Tete' },
+      { code: 'ZAM-01', province: 'Zambézia' }
+    ];
+
+    // 2. APPLICATION STATE
+    let castBallots = [];
+
+    function saveBallotsToStorage() {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          window.localStorage.setItem(STORAGE_KEY, JSON.stringify(castBallots));
+        }
+      } catch (e) {
+        // Ignore storage quota or sandboxed preview errors
+      }
+    }
+
+    function loadBallotsFromStorage() {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          const raw = window.localStorage.getItem(STORAGE_KEY);
+          if (raw) {
+            const parsed = JSON.parse(raw);
+            if (Array.isArray(parsed)) {
+              return parsed;
+            }
+          }
+        }
+      } catch (e) {
+        // Fallback to sample data if storage is blocked in preview sandbox
+      }
+      return null;
+    }
+
+    // 3. INITIALIZATION
+    window.addEventListener('DOMContentLoaded', () => {
+      initGoogleSheetSyncUI();
+      try {
+        const saved = loadBallotsFromStorage();
+        if (saved !== null) {
+          castBallots = saved;
+          renderDemoChips();
+          renderCommissionDashboard();
+        } else {
+          loadSampleAssemblyVotes();
+        }
+      } catch (err) {
+        loadSampleAssemblyVotes();
+      }
+    });
+
+    function getActiveGoogleSheetUrl() {
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          const savedUrl = window.localStorage.getItem(GSHEET_URL_STORAGE_KEY);
+          if (savedUrl && savedUrl.trim()) return savedUrl.trim();
+        }
+      } catch (e) {
+        // Ignore storage restrictions
+      }
+      return (GOOGLE_SHEET_WEB_APP_URL || '').trim();
+    }
+
+    function updateGoogleSheetBadge(statusText, styleClass) {
+      const badge = document.getElementById('gsheet-status-badge');
+      if (!badge) return;
+      badge.textContent = statusText;
+      badge.className = `self-start sm:self-center px-2.5 py-1 rounded-full text-xs font-bold ${styleClass}`;
+    }
+
+    function initGoogleSheetSyncUI() {
+      const input = document.getElementById('gsheet-webhook-url');
+      const activeUrl = getActiveGoogleSheetUrl();
+      if (input && activeUrl) {
+        input.value = activeUrl;
+      }
+      if (activeUrl) {
+        updateGoogleSheetBadge('Live Sheet Sync Active', 'bg-emerald-100 text-melta-green border border-emerald-300');
+      } else {
+        updateGoogleSheetBadge('Local / Offline Mode', 'bg-slate-200 text-slate-700');
+      }
+    }
+
+    function handleGoogleSheetUrlChange(val) {
+      const cleanUrl = (val || '').trim();
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+          if (cleanUrl) {
+            window.localStorage.setItem(GSHEET_URL_STORAGE_KEY, cleanUrl);
+          } else {
+            window.localStorage.removeItem(GSHEET_URL_STORAGE_KEY);
+          }
+        }
+      } catch (e) {
+        // Ignore storage restrictions
+      }
+
+      const feedback = document.getElementById('gsheet-feedback-msg');
+      if (cleanUrl) {
+        updateGoogleSheetBadge('Live Sheet Sync Active', 'bg-emerald-100 text-melta-green border border-emerald-300');
+        if (feedback) {
+          feedback.textContent = 'Google Sheet Web App URL saved. Submitted ballots will automatically post to your sheet.';
+        }
+      } else {
+        updateGoogleSheetBadge('Local / Offline Mode', 'bg-slate-200 text-slate-700');
+        if (feedback) {
+          feedback.textContent = 'Tip: Paste your deployed Google Apps Script Web App URL here once—it saves automatically in this browser.';
+        }
+      }
+    }
+
+    function toggleAppsScriptBox() {
+      const box = document.getElementById('apps-script-box');
+      if (box) box.classList.toggle('hidden');
+    }
+
+    function copyAppsScriptCode() {
+      const codeEl = document.getElementById('apps-script-code');
+      const btn = document.getElementById('copy-script-btn');
+      if (!codeEl) return;
+
+      const text = codeEl.textContent;
+      let copied = false;
+
+      try {
+        const tempTextarea = document.createElement('textarea');
+        tempTextarea.value = text;
+        tempTextarea.setAttribute('readonly', '');
+        tempTextarea.style.position = 'absolute';
+        tempTextarea.style.left = '-9999px';
+        document.body.appendChild(tempTextarea);
+        tempTextarea.select();
+        copied = document.execCommand('copy');
+        document.body.removeChild(tempTextarea);
+      } catch (e) {
+        copied = false;
+      }
+
+      if (btn) {
+        const orig = btn.textContent;
+        btn.textContent = copied ? 'Copied!' : 'Select & Copy Above';
+        setTimeout(() => { btn.textContent = orig; }, 1800);
+      }
+    }
+
+    function testGoogleSheetPing() {
+      const url = getActiveGoogleSheetUrl();
+      const feedback = document.getElementById('gsheet-feedback-msg');
+      if (!url) {
+        if (feedback) {
+          feedback.textContent = 'Please paste a valid Google Apps Script Web App URL first.';
+        }
+        return;
+      }
+
+      try {
+        fetch(url, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+          body: JSON.stringify({
+            event: 'MELTA_2026_PING_TEST',
+            controlNumber: 'TEST-PING',
+            province: 'Electoral Commission',
+            provincialVote: 'test',
+            nationalVote: 'test',
+            timestamp: new Date().toISOString(),
+            confirmationCode: 'PING-' + Math.random().toString(36).substring(2, 6).toUpperCase()
+          })
+        }).then(() => {
+          updateGoogleSheetBadge('Test Ping Sent', 'bg-emerald-100 text-melta-green border border-emerald-300');
+          if (feedback) {
+            feedback.textContent = 'Test ping dispatched to your Google Sheet. Check the "Ballots" tab to confirm the row arrived.';
+          }
+        }).catch(() => {
+          updateGoogleSheetBadge('Sync Check Needed', 'bg-amber-100 text-amber-800 border border-amber-300');
+          if (feedback) {
+            feedback.textContent = 'Could not reach the endpoint—verify that the Web App is deployed with access set to "Anyone".';
+          }
+        });
+      } catch (e) {
+        if (feedback) {
+          feedback.textContent = 'Unable to send test ping in this environment.';
+        }
+      }
+    }
+
+    // 4. VIEW SWITCHING (DELEGATE BALLOT vs. ELECTORAL COMMISSION)
+    function switchTab(tabName) {
+      const voterView = document.getElementById('view-voter');
+      const commissionView = document.getElementById('view-commission');
+      const tabVoter = document.getElementById('tab-voter');
+      const tabCommission = document.getElementById('tab-commission');
+
+      if (tabName === 'voter') {
+        voterView.classList.remove('hidden');
+        commissionView.classList.add('hidden');
+        tabVoter.className = 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-white text-melta-dark shadow-sm transition';
+        tabCommission.className = 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold text-slate-200 hover:text-white transition';
+      } else {
+        voterView.classList.add('hidden');
+        commissionView.classList.remove('hidden');
+        tabCommission.className = 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold bg-white text-melta-dark shadow-sm transition';
+        tabVoter.className = 'px-3.5 py-2 rounded-lg text-xs sm:text-sm font-semibold text-slate-200 hover:text-white transition';
+        renderCommissionDashboard();
+      }
+    }
+
+    // 5. DEMO QUICK-FILL CHIPS
+    function renderDemoChips() {
+      const container = document.getElementById('demo-code-chips');
+      const usedSet = new Set(castBallots.map(b => b.controlNumber));
+
+      container.innerHTML = DEMO_QUICK_CODES.map(item => {
+        const isUsed = usedSet.has(item.code);
+        return `
+          <button
+            type="button"
+            onclick="applyDemoCode('${item.province}', '${item.code}')"
+            class="px-2.5 py-1 rounded-lg text-xs font-mono font-bold border transition ${
+              isUsed
+                ? 'bg-slate-100 text-slate-400 border-slate-200 line-through'
+                : 'bg-white hover:bg-emerald-100 text-melta-green border-emerald-300 shadow-2xs'
+            }"
+            title="${isUsed ? 'Already voted (click to test duplicate block)' : 'Click to auto-fill ' + item.province}"
+          >
+            ${item.code}
+          </button>
+        `;
+      }).join('');
+    }
+
+    function applyDemoCode(province, code) {
+      resetForNextDelegate();
+      document.getElementById('province-select').value = province;
+      document.getElementById('control-number').value = code;
+      handleProvinceChange();
+    }
+
+    // 6. DYNAMIC PROVINCE & CONTROL NUMBER AUTO-DETECTION
+    function handleControlNumberInput(inputEl) {
+      inputEl.value = inputEl.value.toUpperCase().trim();
+      const val = inputEl.value;
+      const prefixMatch = val.match(/^([A-Z]{3})/);
+      if (prefixMatch && PREFIX_TO_PROVINCE[prefixMatch[1]]) {
+        const detectedProvince = PREFIX_TO_PROVINCE[prefixMatch[1]];
+        const provinceSelect = document.getElementById('province-select');
+        if (provinceSelect.value !== detectedProvince) {
+          provinceSelect.value = detectedProvince;
+          handleProvinceChange();
+        }
+      }
+    }
+
+    function handleProvinceChange() {
+      hideValidationError();
+      const province = document.getElementById('province-select').value;
+      const provincialCard = document.getElementById('provincial-ballot-card');
+      const venueHint = document.getElementById('venue-hint');
+      const rangeHint = document.getElementById('range-hint');
+
+      // Clear any previous provincial radio selection
+      document.querySelectorAll('input[name="provincial_vote"]').forEach(r => r.checked = false);
+
+      if (!province || !PROVINCES_DATA[province]) {
+        provincialCard.classList.add('hidden');
+        venueHint.textContent = 'Select your province or delegation, or type your Control Number.';
+        rangeHint.textContent = 'Issued anonymously by the Electoral Commission / Provincial President.';
+        return;
+      }
+
+      const data = PROVINCES_DATA[province];
+      venueHint.innerHTML = `<strong>Venue:</strong> ${data.venue}`;
+      rangeHint.innerHTML = `Valid Control Number range for ${province}: <strong class="font-mono text-slate-800">${data.rangeText}</strong>`;
+
+      if (!data.hasProvincialSlate) {
+        provincialCard.classList.add('hidden');
+        return;
+      }
+
+      // Populate Provincial Ballot Card
+      document.getElementById('provincial-ballot-title').textContent = `PROVINCIAL REPRESENTATIVES — ${province.toUpperCase()}`;
+      document.getElementById('provincial-venue-badge').textContent = `Venue: ${data.venue}`;
+      document.getElementById('provincial-electoral-officer').textContent =
+        `Pres: ${data.electoralTeam.president} (${data.electoralTeam.presidentPhone}) • Vocal: ${data.electoralTeam.vocal} (${data.electoralTeam.vocalPhone})`;
+
+      const listContainer = document.getElementById('provincial-candidates-list');
+      listContainer.innerHTML = data.candidates.map((cand, idx) => `
+        <div class="bg-white border border-slate-200 rounded-xl p-3 flex flex-col justify-between">
+          <span class="text-[11px] font-bold uppercase tracking-wider text-melta-green">${idx + 1}. ${cand.role}</span>
+          <span class="text-sm font-bold text-slate-900 mt-1">${cand.name}</span>
+        </div>
+      `).join('');
+
+      provincialCard.classList.remove('hidden');
+    }
+
+    // 7. FORM SUBMISSION & VALIDATION
+    function showValidationError(title, message) {
+      const box = document.getElementById('validation-error-box');
+      document.getElementById('validation-error-title').textContent = title;
+      document.getElementById('validation-error-msg').textContent = message;
+      box.classList.remove('hidden');
+      box.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+
+    function hideValidationError() {
+      const box = document.getElementById('validation-error-box');
+      if (box) box.classList.add('hidden');
+    }
+
+    function handleBallotSubmit(event) {
+      event.preventDefault();
+      hideValidationError();
+
+      const province = document.getElementById('province-select').value;
+      const controlNumber = document.getElementById('control-number').value.trim().toUpperCase();
+
+      if (!province || !PROVINCES_DATA[province]) {
+        showValidationError('Province Required', 'Please select your Province / Delegation before casting your ballot.');
+        return;
+      }
+
+      const provInfo = PROVINCES_DATA[province];
+      const match = controlNumber.match(/^([A-Z]{3})-(\d{2})$/);
+      if (!match || match[1] !== provInfo.prefix) {
+        showValidationError(
+          'Invalid Ballot Control Number Format',
+          `For ${province}, your Control Number must follow the format ${provInfo.rangeText} (e.g., ${provInfo.prefix}-01).`
+        );
+        return;
+      }
+
+      const ballotIndex = parseInt(match[2], 10);
+      if (ballotIndex < 1 || ballotIndex > provInfo.maxDelegates) {
+        showValidationError(
+          'Control Number Out of Accredited Range',
+          `${province} has ${provInfo.maxDelegates} accredited delegates (${provInfo.rangeText}). "${controlNumber}" is not a valid control number.`
+        );
+        return;
+      }
+
+      const alreadyUsed = castBallots.some(b => b.controlNumber === controlNumber);
+      if (alreadyUsed) {
+        showValidationError(
+          'Duplicate Ballot Blocked',
+          `Control Number "${controlNumber}" has already been used to cast a ballot. Each delegate may vote only once.`
+        );
+        return;
+      }
+
+      let provincialVote = 'not_applicable';
+      if (provInfo.hasProvincialSlate) {
+        const selectedProv = document.querySelector('input[name="provincial_vote"]:checked');
+        if (!selectedProv) {
+          showValidationError(
+            'Provincial Ballot Incomplete',
+            `Please select an option (In favour, Against, or In Blank) for the ${province} Provincial Candidate Team.`
+          );
+          return;
+        }
+        provincialVote = selectedProv.value;
+      }
+
+      const selectedNat = document.querySelector('input[name="national_vote"]:checked');
+      if (!selectedNat) {
+        showValidationError(
+          'National Ballot Incomplete',
+          'Please select an option (In favour, Against, or In Blank) for the National Governing Bodies Candidate Team.'
+        );
+        return;
+      }
+      const nationalVote = selectedNat.value;
+
+      const now = new Date();
+      const timestamp = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' • 21 Nov 2026';
+      const confirmationCode = 'MELTA-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+
+      const ballotRecord = {
+        controlNumber,
+        province,
+        provincialVote,
+        nationalVote,
+        timestamp,
+        confirmationCode
+      };
+
+      castBallots.push(ballotRecord);
+
+      saveBallotsToStorage();
+      renderDemoChips();
+      syncBallotToGoogleSheet(ballotRecord);
+
+      document.getElementById('receipt-control-number').textContent = controlNumber;
+      document.getElementById('receipt-province').textContent = province;
+      document.getElementById('receipt-conf-code').textContent = confirmationCode;
+      document.getElementById('receipt-timestamp').textContent = timestamp;
+
+      document.getElementById('ballot-form').classList.add('hidden');
+      document.getElementById('receipt-screen').classList.remove('hidden');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function resetForNextDelegate() {
+      document.getElementById('ballot-form').reset();
+      document.getElementById('provincial-ballot-card').classList.add('hidden');
+      document.getElementById('venue-hint').textContent = 'Select your province or delegation, or type your Control Number.';
+      document.getElementById('range-hint').textContent = 'Issued anonymously by the Electoral Commission / Provincial President.';
+      hideValidationError();
+
+      document.getElementById('receipt-screen').classList.add('hidden');
+      document.getElementById('ballot-form').classList.remove('hidden');
+    }
+
+    // SYNC BALLOT TO SHARED GOOGLE SHEET VIA GOOGLE APPS SCRIPT WEB APP
+    function syncBallotToGoogleSheet(ballotRecord) {
+      const targetUrl = getActiveGoogleSheetUrl();
+      if (!targetUrl) {
+        return;
+      }
+
+      try {
+        fetch(targetUrl, {
+          method: 'POST',
+          mode: 'no-cors',
+          headers: {
+            'Content-Type': 'text/plain;charset=utf-8'
+          },
+          body: JSON.stringify({
+            event: 'MELTA_2026_BALLOT',
+            controlNumber: ballotRecord.controlNumber,
+            province: ballotRecord.province,
+            provincialVote: ballotRecord.provincialVote,
+            nationalVote: ballotRecord.nationalVote,
+            timestamp: ballotRecord.timestamp,
+            confirmationCode: ballotRecord.confirmationCode
+          })
+        }).catch(() => {
+          // Ballot is already safely stored locally and can be exported via CSV if offline
+        });
+      } catch (e) {
+        // Safe fallback when offline or before endpoint configuration
+      }
+    }
+
+    // 8. SAMPLE DATA & RESET CONTROLS FOR COMMISSION DEMO
+    function loadSampleAssemblyVotes() {
+      const sampleBatches = [
+        { province: 'Maputo City', prefix: 'MPC', start: 2, count: 16, votes: ['favour', 'favour', 'favour', 'favour', 'blank', 'favour', 'favour', 'against', 'favour', 'favour', 'favour', 'favour', 'blank', 'favour', 'favour', 'favour'] },
+        { province: 'Gaza', prefix: 'GAZ', start: 2, count: 7, votes: ['favour', 'favour', 'favour', 'favour', 'favour', 'blank', 'favour'] },
+        { province: 'Inhambane', prefix: 'INH', start: 2, count: 8, votes: ['favour', 'favour', 'favour', 'against', 'favour', 'favour', 'favour', 'blank'] },
+        { province: 'Manica', prefix: 'MAN', start: 2, count: 6, votes: ['favour', 'favour', 'favour', 'favour', 'blank', 'favour'] },
+        { province: 'Maputo Province', prefix: 'MPR', start: 2, count: 11, votes: ['favour', 'favour', 'favour', 'favour', 'against', 'favour', 'favour', 'favour', 'blank', 'favour', 'favour'] },
+        { province: 'Nampula', prefix: 'NAM', start: 2, count: 8, votes: ['favour', 'favour', 'favour', 'favour', 'favour', 'favour', 'against', 'favour'] },
+        { province: 'Niassa', prefix: 'NIA', start: 2, count: 7, votes: ['favour', 'favour', 'blank', 'favour', 'favour', 'favour', 'favour'] },
+        { province: 'Sofala', prefix: 'SOF', start: 2, count: 7, votes: ['favour', 'favour', 'favour', 'favour', 'against', 'favour', 'favour'] },
+        { province: 'Tete', prefix: 'TET', start: 2, count: 7, votes: ['favour', 'favour', 'favour', 'against', 'favour', 'favour', 'favour'] },
+        { province: 'Zambézia', prefix: 'ZAM', start: 2, count: 7, votes: ['favour', 'favour', 'favour', 'favour', 'favour', 'blank', 'favour'] }
+      ];
+
+      castBallots = [];
+      let minuteCounter = 10;
+
+      sampleBatches.forEach(batch => {
+        const hasProv = Boolean(PROVINCES_DATA[batch.province]?.hasProvincialSlate);
+        for (let i = 0; i < batch.count; i++) {
+          const num = String(batch.start + i).padStart(2, '0');
+          const code = `${batch.prefix}-${num}`;
+          const voteVal = batch.votes[i] || 'favour';
+          const mins = String(minuteCounter % 60).padStart(2, '0');
+          const hrs = String(10 + Math.floor(minuteCounter / 60)).padStart(2, '0');
+          minuteCounter += 1;
+
+          castBallots.push({
+            controlNumber: code,
+            province: batch.province,
+            provincialVote: hasProv ? voteVal : 'not_applicable',
+            nationalVote: voteVal,
+            timestamp: `${hrs}:${mins}:14 • 21 Nov 2026`,
+            confirmationCode: `MELTA-${batch.prefix}${num}X`
+          });
+        }
+      });
+
+      document.getElementById('reset-confirm-bar').classList.add('hidden');
+      saveBallotsToStorage();
+      renderDemoChips();
+      renderCommissionDashboard();
+    }
+
+    function promptResetAllVotes() {
+      document.getElementById('reset-confirm-bar').classList.remove('hidden');
+    }
+
+    function cancelResetAllVotes() {
+      document.getElementById('reset-confirm-bar').classList.add('hidden');
+    }
+
+    function confirmResetAllVotes() {
+      castBallots = [];
+      document.getElementById('reset-confirm-bar').classList.add('hidden');
+      saveBallotsToStorage();
+      renderDemoChips();
+      renderCommissionDashboard();
+    }
+
+    // 9. RENDER LIVE COMMISSION DASHBOARD
+    function renderCommissionDashboard() {
+      const totalAccredited = Object.values(PROVINCES_DATA).reduce((sum, p) => sum + p.maxDelegates, 0);
+      const totalCast = castBallots.length;
+
+      let natFavour = 0;
+      let natAgainst = 0;
+      let natBlank = 0;
+
+      castBallots.forEach(b => {
+        if (b.nationalVote === 'favour') natFavour++;
+        else if (b.nationalVote === 'against') natAgainst++;
+        else if (b.nationalVote === 'blank') natBlank++;
+      });
+
+      const pct = (val) => totalCast > 0 ? Math.round((val / totalCast) * 100) : 0;
+      const favourPct = pct(natFavour);
+      const againstPct = pct(natAgainst);
+      const blankPct = pct(natBlank);
+      const turnoutPct = Math.round((totalCast / totalAccredited) * 100);
+
+      document.getElementById('nat-total').textContent = totalCast;
+      document.getElementById('nat-favour-count').textContent = natFavour;
+      document.getElementById('nat-favour-pct').textContent = `(${favourPct}%)`;
+      document.getElementById('nat-against-count').textContent = natAgainst;
+      document.getElementById('nat-against-pct').textContent = `(${againstPct}%)`;
+      document.getElementById('nat-blank-count').textContent = natBlank;
+      document.getElementById('nat-blank-pct').textContent = `(${blankPct}%)`;
+      document.getElementById('nat-turnout-label').textContent = `Turnout: ${totalCast}/${totalAccredited} (${turnoutPct}%)`;
+
+      document.getElementById('nat-bar-favour').style.width = `${favourPct}%`;
+      document.getElementById('nat-bar-against').style.width = `${againstPct}%`;
+      document.getElementById('nat-bar-blank').style.width = `${blankPct}%`;
+
+      const natBadge = document.getElementById('national-status-badge');
+      if (totalCast === 0) {
+        natBadge.textContent = 'AWAITING BALLOTS';
+        natBadge.className = 'self-start sm:self-center px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider bg-slate-700 text-slate-300 border border-slate-500';
+      } else if (natFavour > natAgainst) {
+        natBadge.textContent = 'APPROVED / ELECTED';
+        natBadge.className = 'self-start sm:self-center px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider bg-emerald-500/20 text-emerald-300 border border-emerald-400/40';
+      } else {
+        natBadge.textContent = 'NOT APPROVED / TIED';
+        natBadge.className = 'self-start sm:self-center px-3 py-1 rounded-full text-xs font-extrabold uppercase tracking-wider bg-red-500/20 text-red-300 border border-red-400/40';
+      }
+
+      const grid = document.getElementById('provincial-results-grid');
+      grid.innerHTML = Object.entries(PROVINCES_DATA).map(([provName, info]) => {
+        const provBallots = castBallots.filter(b => b.province === provName);
+        const castCount = provBallots.length;
+
+        let fav = 0, ag = 0, blk = 0;
+        provBallots.forEach(b => {
+          if (b.provincialVote === 'favour') fav++;
+          else if (b.provincialVote === 'against') ag++;
+          else if (b.provincialVote === 'blank') blk++;
+        });
+
+        let statusBadge = `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-slate-100 text-slate-600 border border-slate-200">PENDING</span>`;
+        if (castCount > 0) {
+          if (!info.hasProvincialSlate) {
+            statusBadge = `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-sky-100 text-sky-800 border border-sky-200">NATIONAL SLATE ONLY</span>`;
+          } else if (fav > ag) {
+            statusBadge = `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-melta-green border border-emerald-200">ELECTED</span>`;
+          } else {
+            statusBadge = `<span class="px-2.5 py-0.5 rounded-full text-[11px] font-bold bg-red-100 text-red-700 border border-red-200">NOT APPROVED</span>`;
+          }
+        }
+
+        const candidateLines = info.hasProvincialSlate
+          ? info.candidates.map((c, idx) =>
+              `<div class="text-xs text-slate-700 truncate"><span class="font-semibold text-slate-500">${idx + 1}.</span> ${c.name} <span class="text-[11px] text-slate-400">(${c.role.replace('MELTA Provincial ', '')})</span></div>`
+            ).join('')
+          : `<div class="text-xs text-slate-600">No separate provincial slate listed; delegates vote on the <strong>National Governing Bodies</strong> slate.</div>`;
+
+        const tallyBlock = info.hasProvincialSlate
+          ? `
+              <div class="grid grid-cols-3 gap-1.5 text-center">
+                <div class="bg-emerald-50 border border-emerald-200 rounded-lg py-1.5 px-1">
+                  <span class="block text-sm font-extrabold text-melta-green">${fav}</span>
+                  <span class="block text-[10px] font-semibold text-emerald-800 uppercase">In Favour</span>
+                </div>
+                <div class="bg-red-50 border border-red-200 rounded-lg py-1.5 px-1">
+                  <span class="block text-sm font-extrabold text-red-700">${ag}</span>
+                  <span class="block text-[10px] font-semibold text-red-800 uppercase">Against</span>
+                </div>
+                <div class="bg-slate-100 border border-slate-200 rounded-lg py-1.5 px-1">
+                  <span class="block text-sm font-extrabold text-slate-700">${blk}</span>
+                  <span class="block text-[10px] font-semibold text-slate-600 uppercase">Blank</span>
+                </div>
+              </div>
+            `
+          : `
+              <div class="bg-sky-50/80 border border-sky-200 rounded-lg py-2 px-3 text-center">
+                <span class="block text-xs font-bold text-sky-900">${castCount} National Ballots Cast</span>
+                <span class="block text-[11px] text-sky-700">Included in National Governing Bodies tally above</span>
+              </div>
+            `;
+
+        return `
+          <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-4 flex flex-col justify-between space-y-3">
+            <div>
+              <div class="flex items-start justify-between gap-2">
+                <div>
+                  <h4 class="text-base font-extrabold text-slate-900">${provName}</h4>
+                  <p class="text-xs text-slate-500 mt-0.5">${info.venue}</p>
+                </div>
+                ${statusBadge}
+              </div>
+
+              <div class="mt-3 bg-slate-50 border border-slate-200/80 rounded-xl p-2.5 space-y-1">
+                <div class="text-[10px] font-bold uppercase tracking-wider text-melta-green">${info.hasProvincialSlate ? 'Candidate Team' : 'Voting Scope'}</div>
+                ${candidateLines}
+              </div>
+
+              <div class="mt-2.5 text-[11px] text-slate-600 space-y-0.5">
+                <div><strong>${info.hasProvincialSlate ? 'Pres' : 'Hub'}:</strong> ${info.electoralTeam.president} <span class="font-mono text-slate-500">(${info.electoralTeam.presidentPhone})</span></div>
+                <div><strong>${info.hasProvincialSlate ? 'Vocal' : 'Scope'}:</strong> ${info.electoralTeam.vocal} <span class="font-mono text-slate-500">(${info.electoralTeam.vocalPhone})</span></div>
+              </div>
+            </div>
+
+            <div class="pt-3 border-t border-slate-100">
+              <div class="flex items-center justify-between text-xs font-semibold text-slate-600 mb-2">
+                <span>Turnout</span>
+                <span class="font-mono font-bold text-slate-900">${castCount} / ${info.maxDelegates}</span>
+              </div>
+              ${tallyBlock}
+            </div>
+          </div>
+        `;
+      }).join('');
+
+      document.getElementById('audit-count-badge').textContent = `${totalCast} / ${totalAccredited} Control Numbers Used`;
+      const auditTbody = document.getElementById('audit-log-tbody');
+
+      if (totalCast === 0) {
+        auditTbody.innerHTML = `
+          <tr>
+            <td colspan="5" class="py-8 px-4 text-center text-xs text-slate-500">
+              No ballots cast yet. Switch to "Cast Ballot (Delegate View)" or click "Load Sample Assembly Votes" above.
+            </td>
+          </tr>
+        `;
+      } else {
+        const reversed = [...castBallots].reverse();
+        auditTbody.innerHTML = reversed.map((entry, idx) => `
+          <tr class="hover:bg-slate-50">
+            <td class="py-2.5 px-4 text-xs text-slate-400 font-mono">${totalCast - idx}</td>
+            <td class="py-2.5 px-4 font-mono font-bold text-slate-900">${entry.controlNumber}</td>
+            <td class="py-2.5 px-4 text-slate-700 font-medium">${entry.province}</td>
+            <td class="py-2.5 px-4 text-xs text-slate-500">${entry.timestamp}</td>
+            <td class="py-2.5 px-4 text-right">
+              <span class="inline-flex items-center gap-1 text-xs font-semibold text-emerald-700 bg-emerald-50 px-2 py-0.5 rounded border border-emerald-200">
+                <svg class="w-3 h-3" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+                </svg>
+                <span>Secret &amp; Unlinked</span>
+              </span>
+            </td>
+          </tr>
+        `).join('');
+      }
+    }
+
+    // 10. EXPORT OFFICIAL CSV MINUTES
+    function downloadCSVMinutes() {
+      const totalAccredited = Object.values(PROVINCES_DATA).reduce((sum, p) => sum + p.maxDelegates, 0);
+      const totalCast = castBallots.length;
+      let natFav = 0, natAg = 0, natBlk = 0;
+      castBallots.forEach(b => {
+        if (b.nationalVote === 'favour') natFav++;
+        else if (b.nationalVote === 'against') natAg++;
+        else if (b.nationalVote === 'blank') natBlk++;
+      });
+      const natStatus = totalCast === 0 ? 'PENDING' : (natFav > natAg ? 'APPROVED / ELECTED' : 'NOT APPROVED');
+
+      const rows = [
+        ['MOZAMBIQUE ENGLISH LANGUAGE TEACHERS ASSOCIATION (MELTA) - GENERAL ASSEMBLY 2026 OFFICIAL ELECTORAL MINUTES'],
+        ['Date', '21 November 2026'],
+        ['Venue', 'British Council, Av. Sociedade de Geografia, 269, 1st Floor, Hollard Building, Maputo & Provincial Hubs'],
+        ['National Electoral Commission', 'Catarina Arlindo (President), Helder Bayate (1st Vocal), Nalia Francisco (2nd Vocal)'],
+        ['Technical Assistance Team', 'Anastancio Ariel Macuacua (Head of Technical Assistance), Teofilo Dorio, Nelson Tamela'],
+        [],
+        ['SECTION 1: NATIONAL GOVERNING BODIES SUMMARY'],
+        ['Votes Cast', 'Accredited Delegates', 'In Favour', 'Against', 'In Blank', 'Status'],
+        [totalCast, totalAccredited, natFav, natAg, natBlk, natStatus],
+        [],
+        ['SECTION 2: DELEGATIONS & PROVINCIAL REPRESENTATIVES BREAKDOWN (MAPUTO CITY + 9 PROVINCES)'],
+        ['Delegation / Province', 'Venue', 'Electoral Lead', 'Accredited Delegates', 'Votes Cast', 'In Favour', 'Against', 'In Blank', 'Status']
+      ];
+
+      Object.entries(PROVINCES_DATA).forEach(([provName, info]) => {
+        const pBallots = castBallots.filter(b => b.province === provName);
+        let f = 0, a = 0, bl = 0;
+        pBallots.forEach(b => {
+          if (b.provincialVote === 'favour') f++;
+          else if (b.provincialVote === 'against') a++;
+          else if (b.provincialVote === 'blank') bl++;
+        });
+        const st = !info.hasProvincialSlate
+          ? 'NATIONAL SLATE ONLY'
+          : (pBallots.length === 0 ? 'PENDING' : (f > a ? 'ELECTED' : 'NOT APPROVED'));
+        rows.push([
+          provName,
+          info.venue,
+          info.electoralTeam.president,
+          info.maxDelegates,
+          pBallots.length,
+          info.hasProvincialSlate ? f : 'N/A',
+          info.hasProvincialSlate ? a : 'N/A',
+          info.hasProvincialSlate ? bl : 'N/A',
+          st
+        ]);
+      });
+
+      rows.push([]);
+      rows.push(['SECTION 3: ANONYMOUS AUDIT LOG OF USED CONTROL NUMBERS']);
+      rows.push(['Ballot Control Number', 'Province / Delegation', 'Timestamp Recorded']);
+      castBallots.forEach(b => {
+        rows.push([b.controlNumber, b.province, b.timestamp]);
+      });
+
+      const csvContent = rows.map(r => r.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')).join('\n');
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.setAttribute('href', url);
+      link.setAttribute('download', 'MELTA_2026_General_Assembly_Electoral_Minutes.csv');
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>
