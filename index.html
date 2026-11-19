@@ -98,17 +98,6 @@
     <!-- ===================================================================== -->
     <section id="view-voter" class="space-y-6">
 
-      <!-- Quick Demo Helper Banner -->
-      <div class="bg-emerald-50 border border-emerald-200 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div class="text-xs sm:text-sm text-emerald-950">
-          <strong class="font-bold text-melta-green">Demo Quick-Fill (Maputo City + 9 Provinces):</strong>
-          Click an unused Ballot Control Number below to auto-select that delegation and test voting:
-        </div>
-        <div class="flex flex-wrap gap-1.5" id="demo-code-chips">
-          <!-- Populated dynamically -->
-        </div>
-      </div>
-
       <!-- Validation Alert Banner (Hidden by default) -->
       <div id="validation-error-box" class="hidden bg-red-50 border-l-4 border-red-600 rounded-xl p-4 shadow-sm" role="alert">
         <div class="flex items-start gap-3">
@@ -148,11 +137,11 @@
                 required
               >
                 <option value="">-- Choose Delegation (or Auto-Detect via PIN) --</option>
-                <option value="Maputo City">Maputo City (British Council — 27 Delegates)</option>
+                <option value="Maputo City">Maputo City (British Council — 29 Delegates)</option>
                 <option value="Gaza">Gaza (Xai-Xai — 10 Delegates)</option>
                 <option value="Inhambane">Inhambane (Maxixe — 10 Delegates)</option>
                 <option value="Manica">Manica (Chimoio — 10 Delegates)</option>
-                <option value="Maputo Province">Maputo Province (15 Delegates)</option>
+                <option value="Maputo Province">Maputo Province (16 Delegates)</option>
                 <option value="Nampula">Nampula (Nampula City — 10 Delegates)</option>
                 <option value="Niassa">Niassa (Lichinga — 10 Delegates)</option>
                 <option value="Sofala">Sofala (Beira — 10 Delegates)</option>
@@ -437,24 +426,10 @@
         <div>
           <h2 class="text-base font-bold text-slate-900">Electoral Commission Live Tabulation</h2>
           <p class="text-xs text-slate-500 mt-0.5">
-            Real-time aggregation across Maputo City &amp; 9 Provincial Hubs (122 accredited delegates; Cabo Delgado not provided). NEC: Catarina Arlindo, Helder Bayate &amp; Nalia Francisco &bull; Tech Assistance: Anastancio Ariel Macuacua (Head), Teofilo Dorio &amp; Nelson Tamela.
+            Real-time aggregation across Maputo City &amp; 9 Provincial Hubs (125 accredited delegates; Cabo Delgado not provided). NEC: Catarina Arlindo, Helder Bayate &amp; Nalia Francisco &bull; Tech Assistance: Anastancio Ariel Macuacua (Head), Teofilo Dorio &amp; Nelson Tamela.
           </p>
         </div>
         <div class="flex flex-wrap items-center gap-2">
-          <button
-            type="button"
-            onclick="loadSampleAssemblyVotes()"
-            class="px-3.5 py-2 rounded-xl bg-melta-light hover:bg-emerald-200/70 text-melta-green border border-emerald-300 text-xs font-bold transition"
-          >
-            Load Sample Assembly Votes
-          </button>
-          <button
-            type="button"
-            onclick="promptResetAllVotes()"
-            class="px-3.5 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300 text-xs font-bold transition"
-          >
-            Reset Demo Data
-          </button>
           <button
             type="button"
             onclick="downloadCSVMinutes()"
@@ -571,7 +546,7 @@
       <!-- INLINE RESET CONFIRMATION BAR -->
       <div id="reset-confirm-bar" class="hidden bg-red-50 border border-red-300 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div class="text-xs sm:text-sm text-red-900">
-          <strong>Confirm Reset:</strong> Clear all recorded ballots and unlock all 122 Control Numbers back to 0?
+          <strong>Confirm Reset:</strong> Clear all recorded ballots and unlock all 125 Control Numbers back to 0?
         </div>
         <div class="flex items-center gap-2 shrink-0">
           <button
@@ -610,7 +585,7 @@
               <span class="text-xs font-semibold text-slate-500">Total Ballots Cast</span>
               <div class="mt-1 flex items-baseline gap-2">
                 <span id="nat-total" class="text-2xl sm:text-3xl font-extrabold text-slate-900">0</span>
-                <span class="text-xs font-medium text-slate-500">/ 122 accredited</span>
+                <span class="text-xs font-medium text-slate-500">/ 125 accredited</span>
               </div>
             </div>
 
@@ -673,7 +648,7 @@
             <p class="text-xs text-slate-500">Tracks which Control Numbers have voted without revealing how each delegate voted.</p>
           </div>
           <span id="audit-count-badge" class="self-start sm:self-center text-xs font-bold bg-slate-200 text-slate-800 px-2.5 py-1 rounded-lg">
-            0 / 122 Control Numbers Used
+            0 / 125 Control Numbers Used
           </span>
         </div>
 
@@ -715,12 +690,12 @@
     // to pre-configure it for everyone who opens the hosted page, or paste it in the Commission tab.
     const GOOGLE_SHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzGATRe7ZapzSOHhBKqctDker5rb-pa7ptNqyg5P50WxzWBcIUxdqDVX4iQ6y6CEaQ59Q/exec';
 
-    // 1. MASTER DELEGATION & PROVINCIAL CONFIGURATION (Maputo City [27] + 9 Provinces [95] = 122 Accredited Delegates)
+    // 1. MASTER DELEGATION & PROVINCIAL CONFIGURATION (Maputo City [29] + 9 Provinces [96] = 125 Accredited Delegates)
     const PROVINCES_DATA = {
       'Maputo City': {
         prefix: 'MPC',
-        maxDelegates: 27,
-        rangeText: 'MPC-01 to MPC-27',
+        maxDelegates: 29,
+        rangeText: 'MPC-01 to MPC-29',
         venue: 'British Council, Av. Sociedade de Geografia, 269, 1st Floor, Hollard Building, Maputo',
         hasProvincialSlate: true,
         electoralTeam: {
@@ -796,8 +771,8 @@
       },
       'Maputo Province': {
         prefix: 'MPR',
-        maxDelegates: 15,
-        rangeText: 'MPR-01 to MPR-15',
+        maxDelegates: 16,
+        rangeText: 'MPR-01 to MPR-16',
         venue: 'British Council, Av. Sociedade de Geografia, 269, 1st Floor, Hollard Building, Maputo',
         hasProvincialSlate: true,
         electoralTeam: {
@@ -954,18 +929,29 @@
     // 3. INITIALIZATION
     window.addEventListener('DOMContentLoaded', () => {
       initGoogleSheetSyncUI();
-      try {
-        const saved = loadBallotsFromStorage();
-        if (saved !== null) {
-          castBallots = saved;
-          renderDemoChips();
-          renderCommissionDashboard();
-        } else {
-          loadSampleAssemblyVotes();
+      const params = new URLSearchParams(window.location.search);
+      const shouldReset = params.get('reset') === '1';
+
+      if (shouldReset) {
+        castBallots = [];
+        saveBallotsToStorage();
+        try {
+          if (window.history && window.history.replaceState) {
+            window.history.replaceState({}, document.title, window.location.pathname);
+          }
+        } catch (e) {
+          // Ignore history API restrictions
         }
-      } catch (err) {
-        loadSampleAssemblyVotes();
+      } else {
+        try {
+          const saved = loadBallotsFromStorage();
+          castBallots = saved !== null ? saved : [];
+        } catch (err) {
+          castBallots = [];
+        }
       }
+      renderDemoChips();
+      renderCommissionDashboard();
     });
 
     function getActiveGoogleSheetUrl() {
@@ -1128,6 +1114,7 @@
     // 5. DEMO QUICK-FILL CHIPS
     function renderDemoChips() {
       const container = document.getElementById('demo-code-chips');
+      if (!container) return;
       const usedSet = new Set(castBallots.map(b => b.controlNumber));
 
       container.innerHTML = DEMO_QUICK_CODES.map(item => {
@@ -1562,7 +1549,7 @@
         auditTbody.innerHTML = `
           <tr>
             <td colspan="5" class="py-8 px-4 text-center text-xs text-slate-500">
-              No ballots cast yet. Switch to "Cast Ballot (Delegate View)" or click "Load Sample Assembly Votes" above.
+              No ballots cast yet. Switch to "Cast Ballot (Delegate View)" to cast an official ballot.
             </td>
           </tr>
         `;
