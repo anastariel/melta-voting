@@ -500,7 +500,35 @@
                 Copy Apps Script
               </button>
             </div>
-            <pre id="apps-script-code" class="text-[11px] font-mono text-emerald-200 bg-slate-950 p-3 rounded-lg overflow-x-auto leading-relaxed">function doPost(e) {
+            <pre id="apps-script-code" class="text-[11px] font-mono text-emerald-200 bg-slate-950 p-3 rounded-lg overflow-x-auto leading-relaxed">function doGet(e) {
+  try {
+    var ss = SpreadsheetApp.getActiveSpreadsheet();
+    var sheet = ss.getSheetByName('Ballots') || ss.getSheets()[0];
+    var usedCodes = [];
+
+    if (sheet.getLastRow() > 1) {
+      // Column D (4th column) = Control Number, Column B (2nd column) = Event Type
+      var values = sheet.getRange(2, 2, sheet.getLastRow() - 1, 3).getValues();
+      for (var i = 0; i < values.length; i++) {
+        var eventType = String(values[i][0] || '').trim();
+        var ctrl = String(values[i][2] || '').trim().toUpperCase();
+        if (ctrl && eventType !== 'MELTA_2026_PING_TEST') {
+          usedCodes.push(ctrl);
+        }
+      }
+    }
+
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: 'ok', usedControlNumbers: usedCodes }))
+      .setMimeType(ContentService.MimeType.JSON);
+  } catch (err) {
+    return ContentService
+      .createTextOutput(JSON.stringify({ status: 'error', message: err.message }))
+      .setMimeType(ContentService.MimeType.JSON);
+  }
+}
+
+function doPost(e) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var sheet = ss.getSheetByName('Ballots') || ss.getSheets()[0];
@@ -688,7 +716,7 @@
 
     // OPTIONAL DEFAULT: Paste your deployed Google Apps Script Web App URL between the quotes below
     // to pre-configure it for everyone who opens the hosted page, or paste it in the Commission tab.
-    const GOOGLE_SHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbzGATRe7ZapzSOHhBKqctDker5rb-pa7ptNqyg5P50WxzWBcIUxdqDVX4iQ6y6CEaQ59Q/exec';
+    const GOOGLE_SHEET_WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbw6q1nWoaiSst3DvWqaZAYgHnsbjw29MbGAwpRhTkDJR-yQK0P-ICojD-nwtcdrGwBvcw/exec';
 
     // 1. MASTER DELEGATION & PROVINCIAL CONFIGURATION (Maputo City [29] + 9 Provinces [96] = 125 Accredited Delegates)
     const PROVINCES_DATA = {
@@ -898,6 +926,7 @@
 
     // 2. APPLICATION STATE
     let castBallots = [];
+    let sheetUsedControlNumbers = new Set();
 
     function saveBallotsToStorage() {
       try {
@@ -952,7 +981,34 @@
       }
       renderDemoChips();
       renderCommissionDashboard();
+      fetchUsedControlNumbersFromSheet();
     });
+
+    function fetchUsedControlNumbersFromSheet() {
+      const url = getActiveGoogleSheetUrl();
+      if (!url || typeof fetch === 'undefined') {
+        return Promise.resolve(new Set());
+      }
+
+      const sep = url.indexOf('?') === -1 ? '?' : '&';
+      return fetch(`${url}${sep}action=usedCodes&_t=${Date.now()}`, {
+        method: 'GET',
+        cache: 'no-store'
+      })
+        .then(res => res.ok ? res.json() : null)
+        .then(data => {
+          if (data && data.status === 'ok' && Array.isArray(data.usedControlNumbers)) {
+            sheetUsedControlNumbers = new Set(
+              data.usedControlNumbers
+                .map(c => String(c || '').trim().toUpperCase())
+                .filter(Boolean)
+            );
+            renderDemoChips();
+          }
+          return sheetUsedControlNumbers;
+        })
+        .catch(() => sheetUsedControlNumbers);
+    }
 
     function getActiveGoogleSheetUrl() {
       try {
@@ -1115,7 +1171,7 @@
     function renderDemoChips() {
       const container = document.getElementById('demo-code-chips');
       if (!container) return;
-      const usedSet = new Set(castBallots.map(b => b.controlNumber));
+      const usedSet = new Set([...castBallots.map(b => b.controlNumber), ...sheetUsedControlNumbers]);
 
       container.innerHTML = DEMO_QUICK_CODES.map(item => {
         const isUsed = usedSet.has(item.code);
@@ -1246,15 +1302,6 @@
         return;
       }
 
-      const alreadyUsed = castBallots.some(b => b.controlNumber === controlNumber);
-      if (alreadyUsed) {
-        showValidationError(
-          'Duplicate Ballot Blocked',
-          `Control Number "${controlNumber}" has already been used to cast a ballot. Each delegate may vote only once.`
-        );
-        return;
-      }
-
       let provincialVote = 'not_applicable';
       if (provInfo.hasProvincialSlate) {
         const selectedProv = document.querySelector('input[name="provincial_vote"]:checked');
@@ -1278,33 +1325,63 @@
       }
       const nationalVote = selectedNat.value;
 
-      const now = new Date();
-      const timestamp = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' • 21 Nov 2026';
-      const confirmationCode = 'MELTA-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+      const submitBtn = event.target.querySelector('button[type="submit"]');
+      if (submitBtn) {
+        submitBtn.disabled = true;
+        submitBtn.classList.add('opacity-70', 'cursor-not-allowed');
+      }
 
-      const ballotRecord = {
-        controlNumber,
-        province,
-        provincialVote,
-        nationalVote,
-        timestamp,
-        confirmationCode
+      const finalizeSubmission = () => {
+        const alreadyUsedLocal = castBallots.some(b => b.controlNumber === controlNumber);
+        const alreadyUsedRemote = sheetUsedControlNumbers.has(controlNumber);
+        if (alreadyUsedLocal || alreadyUsedRemote) {
+          if (submitBtn) {
+            submitBtn.disabled = false;
+            submitBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+          }
+          showValidationError(
+            'Duplicate Ballot Blocked',
+            `Control Number "${controlNumber}" has already been used to cast a ballot. Each delegate may vote only once.`
+          );
+          return;
+        }
+
+        const now = new Date();
+        const timestamp = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }) + ' • 21 Nov 2026';
+        const confirmationCode = 'MELTA-' + Math.random().toString(36).substring(2, 8).toUpperCase();
+
+        const ballotRecord = {
+          controlNumber,
+          province,
+          provincialVote,
+          nationalVote,
+          timestamp,
+          confirmationCode
+        };
+
+        castBallots.push(ballotRecord);
+        sheetUsedControlNumbers.add(controlNumber);
+
+        saveBallotsToStorage();
+        renderDemoChips();
+        syncBallotToGoogleSheet(ballotRecord);
+
+        if (submitBtn) {
+          submitBtn.disabled = false;
+          submitBtn.classList.remove('opacity-70', 'cursor-not-allowed');
+        }
+
+        document.getElementById('receipt-control-number').textContent = controlNumber;
+        document.getElementById('receipt-province').textContent = province;
+        document.getElementById('receipt-conf-code').textContent = confirmationCode;
+        document.getElementById('receipt-timestamp').textContent = timestamp;
+
+        document.getElementById('ballot-form').classList.add('hidden');
+        document.getElementById('receipt-screen').classList.remove('hidden');
+        window.scrollTo({ top: 0, behavior: 'smooth' });
       };
 
-      castBallots.push(ballotRecord);
-
-      saveBallotsToStorage();
-      renderDemoChips();
-      syncBallotToGoogleSheet(ballotRecord);
-
-      document.getElementById('receipt-control-number').textContent = controlNumber;
-      document.getElementById('receipt-province').textContent = province;
-      document.getElementById('receipt-conf-code').textContent = confirmationCode;
-      document.getElementById('receipt-timestamp').textContent = timestamp;
-
-      document.getElementById('ballot-form').classList.add('hidden');
-      document.getElementById('receipt-screen').classList.remove('hidden');
-      window.scrollTo({ top: 0, behavior: 'smooth' });
+      fetchUsedControlNumbersFromSheet().then(finalizeSubmission);
     }
 
     function resetForNextDelegate() {
